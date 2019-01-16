@@ -1,9 +1,9 @@
 import unittest
 
 """
-Unit tests for the calculator library
+Unit test for the calculator library
 """
-main = __import__('main')
+main = __import__("main")
 
 
 class TestCalculator(unittest.TestCase):
@@ -12,7 +12,6 @@ class TestCalculator(unittest.TestCase):
 
     def test_subtraction(self):
         assert 2 == main.subtract(4, 2)
-
 
 
 if __name__ == "__main__":
