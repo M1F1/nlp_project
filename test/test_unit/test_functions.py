@@ -66,31 +66,40 @@ class TestPreProcessingFunctions(unittest.TestCase):
         self.assertEqual(result_vocab_list, target_vocab_list)
 
     def test_valid_input_to_create_vocab_dict(self):
-        self.assertRaises(
-            ValueError, preprocessing.create_vocab_dict, 1, ['ala']
-        )
+        self.assertRaises(ValueError, preprocessing.create_vocab_dict, 1, ["ala"])
 
+    # TODO: wrong first you have to extract intersect words,
+    # TODO: create embeddings matrix, add <unk>, <bos>, <eos> to it
+    # TODO: and then create_vocab_dict
     def test_create_vocab_dict(self):
-        embedding_list = ["ala", "ma",
-                          "kota", "i",
-                          "slucha", "spliknota",
-                          '<unk>', '<bos>', '<eos>']
-        vocab_list = ["ala", "ma",
-                      "kota", "spliknota",
-                      "a", "kot", "nie",
-                      '<bos>', '<eos>']
-        target_vocab_dict = {'ala': 0, 'ma': 1,
-                             'kota': 2, 'spliknota': 5,
-                             'a': len(embedding_list) - 3,
-                             'kot': len(embedding_list) - 3,
-                             'nie': len(embedding_list) - 3,
-                             '<bos>': len(embedding_list) - 2,
-                             '<eos>': len(embedding_list) - 1
-                             }
+        embedding_list = ["ala", "ma", "kota", "spliknota", "<bos>", "<eos>", "<unk>"]
+        vocab_list = [
+            "ala",
+            "ma",
+            "kota",
+            "spliknota",
+            "a",
+            "kot",
+            "nie",
+            "<bos>",
+            "<eos>",
+        ]
+        target_vocab_dict = {
+            "ala": 0,
+            "ma": 1,
+            "kota": 2,
+            "spliknota": 5,
+            "a": len(embedding_list) - 1,
+            "kot": len(embedding_list) - 1,
+            "nie": len(embedding_list) - 1,
+            "<bos>": len(embedding_list) - 3,
+            "<eos>": len(embedding_list) - 2,
+        }
         result_vocab_dict = preprocessing.create_vocab_dict(
             embeddings_words_list=embedding_list, corpus_words_list=vocab_list
         )
         self.assertEqual(result_vocab_dict, target_vocab_dict)
+
     # TODO: test_function_creating_embeddings_numpy_array + add 3 random generated vectors for eos bos and unk
     # create emmbedidngs matrix base on base on vocab_dict
     # TODO: test_function_counting_all_elements_in_vocab + <unk> words
