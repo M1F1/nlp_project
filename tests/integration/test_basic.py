@@ -1,4 +1,3 @@
-import nose2
 import unittest
 
 my_script = __import__("main")

@@ -15,9 +15,5 @@ def subtract(first_term, second_term):
     return first_term - second_term
 
 
-def subtract2(first_term, second_term):
-    return first_term - second_term
-
-
 if __name__ == "__main__":
     tst()
