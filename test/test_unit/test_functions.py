@@ -3,7 +3,7 @@ import unittest
 """
 Unit test for the calculator library
 """
-main = __import__("main")
+from app import main
 
 
 class TestCalculator(unittest.TestCase):
