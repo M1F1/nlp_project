@@ -1,20 +1,18 @@
 import unittest
-from main import add, subtract
+
 """
 Unit tests for the calculator library
 """
+main = __import__('main')
 
 
-class TestCalculator:
+class TestCalculator(unittest.TestCase):
     def test_addition(self):
-        assert 4 == add(2, 2)
+        assert 4 == main.add(2, 2)
 
     def test_subtraction(self):
-        assert 2 == subtract(4, 2)
+        assert 2 == main.subtract(4, 2)
 
-
-class TestFeatures(unittest.TestCase):
-    pass
 
 
 if __name__ == "__main__":

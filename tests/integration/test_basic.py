@@ -1,7 +1,5 @@
 import unittest
 
-my_script = __import__("main")
-
 
 class TestBasicData(unittest.TestCase):
     pass
