@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 import pandas as pd
-from nose2.plugins import attrib
 
 """
 Unit test for the calculator library

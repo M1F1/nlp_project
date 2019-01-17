@@ -135,7 +135,9 @@ def create_vocab_dict(embeddings_list, vocab_list):
         raise ValueError
 
 
-def add_beginning_and_ending_word_to_sentence(beginning_word, ending_word, tokenize_sentence):
+def add_beginning_and_ending_word_to_sentence(
+    beginning_word, ending_word, tokenize_sentence
+):
     arg_1_correct_types, arg_2_correct_types, arg_3_correct_types = str, str, list
     if (
         isinstance(beginning_word, arg_1_correct_types)
