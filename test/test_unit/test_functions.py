@@ -63,7 +63,7 @@ class TestPreProcessing(unittest.TestCase):
             ValueError,
             preprocessing.create_vocab_set,
             self.__class__.df,
-            columns_names=1
+            columns_names=1,
         )
 
     test_create_vocab_set_return_error_if_args_invalid_type.layer = 2
@@ -76,33 +76,33 @@ class TestPreProcessing(unittest.TestCase):
         }
         vocab_test_df = pd.DataFrame(data=vocab_test_data)
         result_vocab_set = preprocessing.create_vocab_set(
-            vocab_test_df, columns_names=['col1', 'col2']
+            vocab_test_df, columns_names=["col1", "col2"]
         )
         target_vocab_set = {"ala", "ma", "kota", "kot", "ale"}
         self.assertEqual(result_vocab_set, target_vocab_set)
 
     test_create_vocab_set.layer = 2
 
-    def test_valid_input_to_create_embeddings_and_vocab_intesection(self):
+    def test_valid_input_to_create_embeddings_and_vocab_intersection(self):
         self.assertRaises(
-            ValueError, preprocessing.embeddings_vocab_interesction, [1, 2], ["ala"]
+            ValueError, preprocessing.create_embeddings_vocab_intersection, 1, ["ala"]
         )
 
-    test_valid_input_to_create_embeddings_and_vocab_intesection.layer = 2
+    test_valid_input_to_create_embeddings_and_vocab_intersection.layer = 2
 
     def test_create_embeddings_and_vocab_intersection(self):
         vocab_list = ["ala", "ma", "kota", "spliknota", "a", "kot", "nie"]
         embeddings_list = ["ala", "ma", "kota", "i", "slucha", "spliknota"]
         target_embeddings_idx = [0, 1, 2, 5]
-        result_embeddings_idx = preprocessing.embeddings_vocab_intersection(
-            embeddings_list, vocab_list
+        result_embeddings_idx = preprocessing.create_embeddings_vocab_intersection(
+            embeddings_list=embeddings_list, vocab_list=vocab_list
         )
         self.assertEqual(result_embeddings_idx, target_embeddings_idx)
 
     test_create_embeddings_and_vocab_intersection.layer = 2
 
     def test_valid_input_to_count_unk_words(self):
-        self.assertRaises(ValueError, preprocessing.count_unk_words, [1, 2], [2, 10])
+        self.assertRaises(ValueError, preprocessing.count_unk_words, 1, [2, 10])
 
     test_valid_input_to_count_unk_words.layer = 2
 
@@ -128,21 +128,22 @@ class TestPreProcessing(unittest.TestCase):
             (init_embeddings_matrix.shape[0] + 4, init_embeddings_matrix.shape[1])
         )
         result_extended_embeddings_matrix = preprocessing.extend_embeddings_matrix(
-            init_embeddings_matrix
+            init_embeddings_matrix=init_embeddings_matrix
         )
         self.assertEqual(
             result_extended_embeddings_matrix.shape,
             target_extended_embeddings_matrix.shape,
         )
-        # np.testing.assert_array_equal(result_extended_embeddings_matrix, target_extended_embeddings_matrix)
-        # new_vectors_initialization = np.random.rand(3, init_embeddings_matrix.shape[1])
-        # extended_embeddings_matrix[:-3, :] = init_embeddings_matrix
-        # extended_embeddings_matrix[-3:, :] = new_vectors_initialization
+        target_non_zero_rows = np.array([])
+        np.testing.assert_array_equal(
+            np.where(~result_extended_embeddings_matrix.any(axis=1))[0],
+            target_non_zero_rows,
+        )
 
     test_extend_embeddings_matrix.layer = 3
 
     def test_valid_input_to_extend_embeddings_list(self):
-        self.assertRaises(ValueError, preprocessing.extend_embeddings_list, [1])
+        self.assertRaises(ValueError, preprocessing.extend_embeddings_list, 1)
 
     test_valid_input_to_extend_embeddings_list.layer = 3
 
@@ -162,14 +163,14 @@ class TestPreProcessing(unittest.TestCase):
             "<unk>",
         ]
         result_vocab_list = preprocessing.extend_embeddings_list(
-            vocab_list=embeddings_list
+            embeddings_list=embeddings_list
         )
         self.assertEqual(result_vocab_list, target_embeddings_list)
 
     test_extend_embeddings_list.layer = 3
 
     def test_valid_input_to_extend_vocab_list(self):
-        self.assertRaises(ValueError, preprocessing.create_vocab_list, 1)
+        self.assertRaises(ValueError, preprocessing.extend_vocab_list, 1)
 
     test_valid_input_to_extend_vocab_list.layer = 3
 
@@ -252,7 +253,7 @@ class TestPreProcessing(unittest.TestCase):
 
     def test_add_beginning_and_ending_word_to_sentence(self):
         beginning_word = "<bos>"
-        ending_word = "eos"
+        ending_word = "<eos>"
         sentence = "ala ma kota i slucha slipknota"
         target_sentence = "<bos> ala ma kota i slucha slipknota <eos>"
         result_sentence = preprocessing.add_beginning_and_ending_word_to_sentence(
