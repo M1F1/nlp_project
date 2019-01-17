@@ -12,7 +12,9 @@ def filter_df_rows(df: pd.DataFrame, column_name: str, not_wanted_value):
         and isinstance(column_name, arg_2_correct_types)
         and isinstance(not_wanted_value, arg_3_correct_types)
     ):
-        return df[df[column_name] != not_wanted_value].reset_index(drop=True)
+        return df[df[column_name] != not_wanted_value].reset_index(
+            drop=True
+        )
     else:
         raise ValueError
 
@@ -47,7 +49,9 @@ def create_vocab_set(df: pd.DataFrame, columns_names: [str]):
         raise ValueError
 
 
-def create_embeddings_vocab_intersection(embeddings_list: [str], vocab_list: [str]):
+def create_embeddings_vocab_intersection(
+    embeddings_list: [str], vocab_list: [str]
+):
     arg_1_correct_types, arg_2_correct_types = list, list
     if isinstance(embeddings_list, arg_1_correct_types) and isinstance(
         vocab_list, arg_2_correct_types
@@ -81,13 +85,15 @@ def extend_embeddings_matrix(init_embeddings_matrix: np.ndarray):
         number_of_random_initialize_vectors = 4
         extended_embeddings_matrix = np.zeros(
             (
-                init_embeddings_matrix.shape[0] + number_of_random_initialize_vectors,
+                init_embeddings_matrix.shape[0]
+                + number_of_random_initialize_vectors,
                 init_embeddings_matrix.shape[1],
             )
         )
 
         new_vectors = np.random.rand(
-            number_of_random_initialize_vectors, init_embeddings_matrix.shape[1]
+            number_of_random_initialize_vectors,
+            init_embeddings_matrix.shape[1],
         )
         extended_embeddings_matrix[0] = new_vectors[0]
         extended_embeddings_matrix[-3:] = new_vectors[1:]
@@ -138,7 +144,11 @@ def create_vocab_dict(embeddings_list, vocab_list):
 def add_beginning_and_ending_word_to_sentence(
     beginning_word, ending_word, tokenize_sentence
 ):
-    arg_1_correct_types, arg_2_correct_types, arg_3_correct_types = str, str, list
+    arg_1_correct_types, arg_2_correct_types, arg_3_correct_types = (
+        str,
+        str,
+        list,
+    )
     if (
         isinstance(beginning_word, arg_1_correct_types)
         and isinstance(ending_word, arg_2_correct_types)
