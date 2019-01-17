@@ -41,7 +41,6 @@ def create_vocab_set(df: pd.DataFrame, columns_names: [str]):
     ):
         words = []
         for column in columns_names:
-            # import pdb; pdb.set_trace()
             words += df[column].sum()
         return set(words)
     else:
@@ -116,5 +115,36 @@ def extend_vocab_list(vocab_list):
         new_vocab_list = ["<pad>"] + vocab_list
         new_vocab_list += ["<bos>", "<eos>"]
         return new_vocab_list
+    else:
+        raise ValueError
+
+
+def create_vocab_dict(embeddings_list, vocab_list):
+    arg_1_correct_types, arg_2_correct_types = list, list
+    if isinstance(embeddings_list, arg_1_correct_types) and isinstance(
+        vocab_list, arg_2_correct_types
+    ):
+        vocab_dict = {}
+        for word in vocab_list:
+            try:
+                vocab_dict[word] = embeddings_list.index(word)
+            except ValueError:
+                vocab_dict[word] = embeddings_list.index("<unk>")
+        return vocab_dict
+    else:
+        raise ValueError
+
+
+def add_beginning_and_ending_word_to_sentence(beginning_word, ending_word, tokenize_sentence):
+    arg_1_correct_types, arg_2_correct_types, arg_3_correct_types = str, str, list
+    if (
+        isinstance(beginning_word, arg_1_correct_types)
+        and isinstance(ending_word, arg_2_correct_types)
+        and isinstance(tokenize_sentence, arg_3_correct_types)
+    ):
+        new_tokenize_sentence = []
+        new_tokenize_sentence = ["<bos>"] + tokenize_sentence
+        new_tokenize_sentence += ["<eos>"]
+        return new_tokenize_sentence
     else:
         raise ValueError

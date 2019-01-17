@@ -234,7 +234,7 @@ class TestPreProcessing(unittest.TestCase):
             "<eos>": len(embedding_list) - 2,
         }
         result_vocab_dict = preprocessing.create_vocab_dict(
-            embeddings_words_list=embedding_list, corpus_words_list=vocab_list
+            embeddings_list=embedding_list, vocab_list=vocab_list
         )
         self.assertEqual(result_vocab_dict, target_vocab_dict)
 
@@ -254,12 +254,23 @@ class TestPreProcessing(unittest.TestCase):
     def test_add_beginning_and_ending_word_to_sentence(self):
         beginning_word = "<bos>"
         ending_word = "<eos>"
-        sentence = "ala ma kota i slucha slipknota"
-        target_sentence = "<bos> ala ma kota i slucha slipknota <eos>"
+        tokenize_sentence = ["ala", "ma", "kota", "i", "slucha", "slipknota"]
+        target_tokenize_sentence = [
+            "<bos>",
+            "ala",
+            "ma",
+            "kota",
+            "i",
+            "slucha",
+            "slipknota",
+            "<eos>",
+        ]
         result_sentence = preprocessing.add_beginning_and_ending_word_to_sentence(
-            beginning_word=beginning_word, ending_word=ending_word, sentence=sentence
+            beginning_word=beginning_word,
+            ending_word=ending_word,
+            tokenize_sentence=tokenize_sentence,
         )
-        self.assertEqual(result_sentence, target_sentence)
+        self.assertEqual(result_sentence, target_tokenize_sentence)
 
     test_add_beginning_and_ending_word_to_sentence.layer = 4
 
