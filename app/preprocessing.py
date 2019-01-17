@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import nltk
+nltk.download('punkt')
 
 
 def filter_df_rows(df: pd.DataFrame, column_name: str, not_wanted_value):
