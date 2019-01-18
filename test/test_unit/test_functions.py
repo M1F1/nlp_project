@@ -265,6 +265,132 @@ class TestPreProcessing(unittest.TestCase):
 
     test_add_beginning_and_ending_word_to_sentence.layer = 4
 
+    def test_define_batches_amount(self):
+        data = {
+            "label": ["neutral", "entailment", "contradiction"],
+            "premises": [["ala", "ma", "kota"], ["kot", "ma", "ale"], ["ala"]],
+            "hypothesises": [["kota", "ma"], ["ala", "ma", "ale"], ["not", "ala"]],
+        }
+        df = pd.DataFrame(data=data)
+        rows_idx = np.arange(df.shape[0])
+        batch_size = 2
+        target_batches_count = 2
+        result_batches_count = preprocessing.define_batches_amount(rows_idx, batch_size)
+        self.assertEqual(result_batches_count, target_batches_count)
+
+    test_define_batches_amount.layer = 5
+
+    def test_shuffle_data_idx(self):
+        data = {
+            "label": ["neutral", "entailment", "contradiction"],
+            "premises": [["ala", "ma", "kota"], ["kot", "ma", "ale"], ["ala"]],
+            "hypothesises": [["kota", "ma"], ["ala", "ma", "ale"], ["not", "ala"]],
+        }
+        df = pd.DataFrame(data=data)
+        rows_idx = np.arange(df.shape[0])
+        seed = 43
+        target_idx = np.array([1, 2, 0])
+        result_idx = preprocessing.shuffle_data_idx(rows_idx, seed)
+        np.testing.assert_array_equal(result_idx, target_idx)
+
+    test_shuffle_data_idx.layer = 5
+
+    def test_generate_batch_idx_from_data(self):
+        data = {
+            "label": ["neutral", "entailment", "contradiction"],
+            "premises": [["ala", "ma", "kota"], ["kot", "ma", "ale"], ["ala"]],
+            "hypothesises": [["kota", "ma"], ["ala", "ma", "ale"], ["not", "ala"]],
+        }
+        df = pd.DataFrame(data=data)
+        rows_idx = np.arange(df.shape[0])
+        target_idx_batch_1 = np.array([0, 1])
+        target_idx_batch_2 = np.array([2])
+
+        batch_size = 2
+        batch_number_1 = 0
+        batch_number_2 = 1
+
+        result_idx_batch_1 = preprocessing.generate_batch_idx_from_data_idx(
+            rows_idx, batch_size, batch_number_1
+        )
+        result_idx_batch_2 = preprocessing.generate_batch_idx_from_data_idx(
+            rows_idx, batch_size, batch_number_2
+        )
+        np.testing.assert_array_equal(result_idx_batch_1, target_idx_batch_1)
+        np.testing.assert_array_equal(result_idx_batch_2, target_idx_batch_2)
+
+    test_generate_batch_idx_from_data.layer = 5
+
+    def test_get_labels_and_batch_lists_representation(self):
+        data = {
+            "label": ["neutral", "entailment"],
+            "premises": [["ala", "ma", "kota"], ["kot", "ma", "ale"]],
+            "hypothesises": [["kota", "ma"], ["ala", "ma", "ale"]],
+        }
+        df = pd.DataFrame(data=data)
+        target_labels, target_premises_batch, target_hypothesises_batch = (
+            ["neutral"],
+            [["ala", "ma", "kota"]],
+            [["kota", "ma"]],
+        )
+
+        result_labels, result_premises_batch, result_hypothesises_batch = preprocessing.get_labels_and_batch_lists_representation(
+            df=df, selected_rows_idx_list=[0]
+        )
+        self.assertEqual(result_premises_batch, target_premises_batch)
+        self.assertEqual(result_labels, result_labels)
+        self.assertEqual(result_hypothesises_batch, target_hypothesises_batch)
+
+    test_get_labels_and_batch_lists_representation.layer = 5
+
+    def test_create_batch_word_to_idx_representation(self):
+        list_of_words_lists = [
+            ["<bos>", "ala", "bal", "kur", "<eos>"],
+            ["<bos>", "kot", "kot", "<eos>"],
+            ["<bos>", "ala", "bal", "kur", "ala", "<eos>"],
+        ]
+        vocab_dict = {
+            "<pad>": 0,
+            "ala": 1,
+            "bal": 2,
+            "kur": 3,
+            "kot": 4,
+            "<bos>": 5,
+            "<eos>": 6,
+        }
+
+        target_batch = [[5, 1, 2, 3, 6], [5, 4, 4, 6], [5, 1, 2, 3, 1, 6]]
+        result_batch = preprocessing.create_word_to_idx_representation(
+            list_of_words_lists, vocab_dict
+        )
+
+        np.testing.assert_array_equal(result_batch, target_batch)
+
+    test_create_batch_word_to_idx_representation.layer = 5
+
+    def test_create_batch_matrix_representation(self):
+        word_to_idx_sequences = [[5, 1, 2, 3, 6], [5, 4, 4, 6], [5, 1, 2, 3, 1, 6]]
+        vocab_dict = {
+            "<pad>": 0,
+            "ala": 1,
+            "bal": 2,
+            "kur": 3,
+            "kot": 4,
+            "<bos>": 5,
+            "<eos>": 6,
+        }
+
+        target_batch = np.array(
+            [[5, 1, 2, 3, 6, 0], [5, 4, 4, 6, 0, 0], [5, 1, 2, 3, 1, 6]]
+        )
+        result_batch = preprocessing.create_batch_matrix_representation(
+            word_to_idx_sequences, vocab_dict
+        )
+
+        np.testing.assert_array_equal(result_batch, target_batch)
+
+    test_create_batch_matrix_representation.layer = 5
+
 
 class TestCalculatorFunctions(unittest.TestCase):
     def test_addition(self):

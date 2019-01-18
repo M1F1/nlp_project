@@ -4,7 +4,6 @@ import nltk
 import tqdm
 import os
 import pickle
-import sys
 
 nltk.download("punkt")
 
@@ -151,12 +150,14 @@ def add_beginning_and_ending_word_to_sentence(tokenize_sentence):
         raise ValueError
 
 
+# TODO: write test
 def save_obj(obj, name, dir_path):
     filename = name + ".pkl"
     with open(os.path.join(dir_path, filename), "wb") as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
+# TODO: write_test
 def load_obj(filename, dir_path):
     with open(os.path.join(dir_path, filename), "rb") as f:
         return pickle.load(f)
@@ -167,4 +168,51 @@ def load_obj(filename, dir_path):
 # padd others sentences
 # add bos and eos to every sentence
 # create numpy matrix of idx for premises and hipothesis with padd
-#
+
+
+def define_batches_amount(rows_idx: np.ndarray, batch_size: int):
+    batches_amount = (rows_idx.shape[0] // batch_size) + 1
+    return batches_amount
+
+
+def shuffle_data_idx(rows_idx: np.ndarray, seed: int):
+    np.random.seed(seed)
+    np.random.shuffle(rows_idx)
+    return rows_idx
+
+
+def generate_batch_idx_from_data_idx(
+    rows_idx: np.ndarray, batch_size: int, batch_number: int
+):
+    first_element = batch_number * batch_size
+    last_element = (batch_number + 1) * batch_size
+    if last_element <= rows_idx.size:
+        result = rows_idx[first_element:last_element]
+        return result
+    else:
+        result = rows_idx[first_element: rows_idx.size]
+        return result
+
+
+def get_labels_and_batch_lists_representation(df, selected_rows_idx_list):
+    selected_rows = df.iloc[selected_rows_idx_list, :]
+    labels = selected_rows.iloc[:, 0].values.tolist()
+    premises = selected_rows.iloc[:, 1].values.tolist()
+    hypothesis = selected_rows.iloc[:, 2].values.tolist()
+    return labels, premises, hypothesis
+
+
+def create_word_to_idx_representation(list_of_words_list, vocab_list):
+    return [[vocab_list[word] for word in l] for l in list_of_words_list]
+
+
+def create_batch_matrix_representation(list_of_words_lists, vocab_dict):
+    words_lists_lengths = [len(l) for l in list_of_words_lists]
+    max_length = max(words_lists_lengths)
+    batch_array = np.ones((len(list_of_words_lists), max_length)) * vocab_dict["<pad>"]
+
+    for i, list_len in enumerate(words_lists_lengths):
+        sequence = list_of_words_lists[i]
+        batch_array[i, :list_len] = sequence[:list_len]
+
+    return batch_array
