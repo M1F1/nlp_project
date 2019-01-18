@@ -6,7 +6,6 @@ import pandas as pd
 Unit test for the calculator library
 """
 from app import preprocessing
-from app import main
 
 
 class TestPreProcessing(unittest.TestCase):
@@ -295,7 +294,7 @@ class TestPreProcessing(unittest.TestCase):
 
     test_shuffle_data_idx.layer = 5
 
-    def test_generate_batch_idx_from_data(self):
+    def test_generate_batch_idx_from_data_idx(self):
         data = {
             "label": ["neutral", "entailment", "contradiction"],
             "premises": [["ala", "ma", "kota"], ["kot", "ma", "ale"], ["ala"]],
@@ -319,7 +318,7 @@ class TestPreProcessing(unittest.TestCase):
         np.testing.assert_array_equal(result_idx_batch_1, target_idx_batch_1)
         np.testing.assert_array_equal(result_idx_batch_2, target_idx_batch_2)
 
-    test_generate_batch_idx_from_data.layer = 5
+    test_generate_batch_idx_from_data_idx.layer = 5
 
     def test_get_labels_and_batch_lists_representation(self):
         data = {
@@ -390,26 +389,6 @@ class TestPreProcessing(unittest.TestCase):
         np.testing.assert_array_equal(result_batch, target_batch)
 
     test_create_batch_matrix_representation.layer = 5
-
-
-class TestCalculatorFunctions(unittest.TestCase):
-    def test_addition(self):
-        self.assertEqual(main.add(np.array([2]), np.array([2])), np.array([4]))
-
-    def test_calculator_returns_error_message_if_both_args_not_numbers(self):
-        self.assertRaises(ValueError, main.add, "ad", "three")
-
-    def test_calculator_returns_error_message_if_first_arg_not_numbers(self):
-        self.assertRaises(ValueError, main.add, "ad", 3)
-
-    def test_calculator_returns_error_message_if_second_arg_not_numbers(self):
-        self.assertRaises(ValueError, main.add, 3, "three")
-
-    def test_subtraction(self):
-        self.assertEqual(main.subtract(2, 2), 0)
-
-    def test_multiplication(self):
-        self.assertEqual(main.multiply(2, 2), 4)
 
 
 if __name__ == "__main__":

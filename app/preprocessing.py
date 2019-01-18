@@ -215,4 +215,14 @@ def create_batch_matrix_representation(list_of_words_lists, vocab_dict):
         sequence = list_of_words_lists[i]
         batch_array[i, :list_len] = sequence[:list_len]
 
-    return batch_array
+    return batch_array.astype(np.int)
+
+# def preprocess_data(dataset_type):
+#
+#     if dataset_type == 'train':
+#
+#     else:
+
+
+
+# if __name__ == '__main__':
