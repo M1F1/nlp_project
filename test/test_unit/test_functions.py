@@ -241,9 +241,7 @@ class TestPreProcessing(unittest.TestCase):
 
     def test_valid_input_to_add_beginning_and_ending_word_to_sentence(self):
         self.assertRaises(
-            ValueError,
-            preprocessing.add_beginning_and_ending_word_to_sentence,
-            1,
+            ValueError, preprocessing.add_beginning_and_ending_word_to_sentence, 1
         )
 
     test_valid_input_to_add_beginning_and_ending_word_to_sentence.layer = 4
@@ -266,8 +264,6 @@ class TestPreProcessing(unittest.TestCase):
         self.assertEqual(result_sentence, target_tokenize_sentence)
 
     test_add_beginning_and_ending_word_to_sentence.layer = 4
-
-    def test
 
 
 class TestCalculatorFunctions(unittest.TestCase):

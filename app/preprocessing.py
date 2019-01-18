@@ -161,9 +161,10 @@ def load_obj(filename, dir_path):
     with open(os.path.join(dir_path, filename), "rb") as f:
         return pickle.load(f)
 
-#TODO: prepere data:
+
+# TODO: prepere data:
 # write batch creation_function which compute the longest sentence in batch and
 # padd others sentences
-    # add bos and eos to every sentence
-    # create numpy matrix of idx for premises and hipothesis with padd
-    #
+# add bos and eos to every sentence
+# create numpy matrix of idx for premises and hipothesis with padd
+#
