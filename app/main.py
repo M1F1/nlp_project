@@ -3,9 +3,7 @@ import numpy as np
 
 def add(first_term, second_term):
     correct_types = np.ndarray
-    if isinstance(first_term, correct_types) and isinstance(
-        second_term, correct_types
-    ):
+    if isinstance(first_term, correct_types) and isinstance(second_term, correct_types):
         result = np.zeros_like(first_term)
         result = first_term + second_term
         return result
