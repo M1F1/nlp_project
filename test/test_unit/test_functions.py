@@ -356,18 +356,19 @@ class TestPreProcessing(unittest.TestCase):
             "kot": 4,
             "<bos>": 5,
             "<eos>": 6,
+            "<unk>": 7
         }
-        embeddings_matrix = np.array([[1, 2],
-                                     [2, 3],
-                                     [2, 3],
-                                     [2, 4],
-                                     [2, 3],
-                                     [2, 2],
-                                     [3, 3]])
+        # embeddings_matrix = np.array([[1, 2],
+        #                              [2, 3],
+        #                              [2, 3],
+        #                              [2, 4],
+        #                              [2, 3],
+        #                              [2, 2],
+        #                              [3, 3]])
 
         target_batch = [[5, 1, 2, 3, 6], [5, 4, 4, 6], [5, 1, 2, 3, 1, 6]]
         result_batch = preprocessing.create_word_to_idx_representation(
-            list_of_words_lists, vocab_dict, embeddings_matrix
+            list_of_words_lists, vocab_dict
         )
 
         np.testing.assert_array_equal(result_batch, target_batch)
@@ -396,6 +397,12 @@ class TestPreProcessing(unittest.TestCase):
         np.testing.assert_array_equal(result_batch, target_batch)
 
     test_create_batch_matrix_representation.layer = 5
+
+    def test_labels2idx(self):
+        labels = ['neutral', 'entailment', 'contradiction', 'neutral']
+        target_idx = np.array([0, 2, 1, 0])
+        result_idx = preprocessing.labels2idx(labels)
+        np.testing.assert_array_equal(result_idx, target_idx)
 
 
 if __name__ == "__main__":

@@ -180,7 +180,7 @@ def shuffle_data_idx(rows_idx: np.ndarray, seed: int):
 
 
 def generate_batch_idx_from_data_idx(
-    rows_idx: np.ndarray, batch_size: int, batch_number: int
+        rows_idx: np.ndarray, batch_size: int, batch_number: int
 ):
     first_element = batch_number * batch_size
     last_element = (batch_number + 1) * batch_size
@@ -200,8 +200,8 @@ def get_labels_and_batch_lists_representation(df, selected_rows_idx_list):
     return labels, premises, hypothesis
 
 
-def create_word_to_idx_representation(list_of_words_list, vocab_dict, embeddings_matrix):
-    return [[vocab_dict.get(word, embeddings_matrix.shape[0] - 1) for word in l] for l in list_of_words_list]
+def create_word_to_idx_representation(list_of_words_list, vocab_dict):
+    return [[vocab_dict.get(word, vocab_dict['<unk>']) for word in l] for l in list_of_words_list]
 
 
 def create_batch_matrix_representation(list_of_idx_words_lists, vocab_dict):
@@ -216,7 +216,13 @@ def create_batch_matrix_representation(list_of_idx_words_lists, vocab_dict):
     return batch_array.astype(np.int)
 
 
+def labels2idx(labels):
+    labels_dict = {'neutral': 0, 'contradiction': 1, 'entailment': 2}
+    labels_idx = [labels_dict[label] for label in labels]
+    return np.array(labels_idx)
+
 def preprocessing_pipe(data_path, data_set, data_filename):
+    import tqdm
     particular_data_path = os.path.join(data_path, data_set, data_filename)
     import csv
     tqdm.tqdm.pandas()
@@ -229,7 +235,7 @@ def preprocessing_pipe(data_path, data_set, data_filename):
     columns = lines.pop(0)
     df = pd.DataFrame(data=lines, columns=columns)
     data = df[['gold_label', 'sentence1', 'sentence2']].copy()
-    if data_set == 'test':
+    if data_set != 'train':
         print(data.loc[data['gold_label'] == '-'].iloc[:10])
         data = filter_df_rows(data, 'gold_label', '-')
 
