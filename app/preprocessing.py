@@ -2,8 +2,10 @@ import numpy as np
 import pandas as pd
 import nltk
 import tqdm
+from tqdm import tqdm
 import os
 import pickle
+import argparse
 
 nltk.download("punkt")
 
@@ -45,7 +47,8 @@ def create_vocab_set(df: pd.DataFrame, columns_names: [str]):
         columns_names, arg_2_correct_types
     ):
         words = set()
-        for i in tqdm.tnrange(df.shape[0]):
+        print('Creating vocab_set:')
+        for i in tqdm(range(df.shape[0])):
             for column in columns_names:
                 words.update(df.iloc[i][column])
         return words
@@ -59,7 +62,8 @@ def create_embeddings_vocab_intersection(embeddings_list: [str], vocab_list: [st
         vocab_list, arg_2_correct_types
     ):
         idx_list = []
-        for i in tqdm.tnrange(len(vocab_list)):
+        print('\nCreating vocab intercestion with embeddings:')
+        for i in tqdm(range(len(vocab_list))):
             if vocab_list[i] in embeddings_list:
                 idx_list.append(embeddings_list.index(vocab_list[i]))
         return idx_list
@@ -129,7 +133,8 @@ def create_vocab_dict(embeddings_list, vocab_list):
         vocab_list, arg_2_correct_types
     ):
         vocab_dict = {}
-        for i in tqdm.tnrange(len(vocab_list)):
+        print('\nCreating vocab dict: ')
+        for i in tqdm(range(len(vocab_list))):
             try:
                 vocab_dict[vocab_list[i]] = embeddings_list.index(vocab_list[i])
             except ValueError:
@@ -161,13 +166,6 @@ def save_obj(obj, name, dir_path):
 def load_obj(filename, dir_path):
     with open(os.path.join(dir_path, filename), "rb") as f:
         return pickle.load(f)
-
-
-# TODO: prepere data:
-# write batch creation_function which compute the longest sentence in batch and
-# padd others sentences
-# add bos and eos to every sentence
-# create numpy matrix of idx for premises and hipothesis with padd
 
 
 def define_batches_amount(rows_idx: np.ndarray, batch_size: int):
@@ -202,27 +200,78 @@ def get_labels_and_batch_lists_representation(df, selected_rows_idx_list):
     return labels, premises, hypothesis
 
 
-def create_word_to_idx_representation(list_of_words_list, vocab_list):
-    return [[vocab_list[word] for word in l] for l in list_of_words_list]
+def create_word_to_idx_representation(list_of_words_list, vocab_dict, embeddings_matrix):
+    return [[vocab_dict.get(word, embeddings_matrix.shape[0] - 1) for word in l] for l in list_of_words_list]
 
 
-def create_batch_matrix_representation(list_of_words_lists, vocab_dict):
-    words_lists_lengths = [len(l) for l in list_of_words_lists]
+def create_batch_matrix_representation(list_of_idx_words_lists, vocab_dict):
+    words_lists_lengths = [len(l) for l in list_of_idx_words_lists]
     max_length = max(words_lists_lengths)
-    batch_array = np.ones((len(list_of_words_lists), max_length)) * vocab_dict["<pad>"]
+    batch_array = np.ones((len(list_of_idx_words_lists), max_length)) * vocab_dict["<pad>"]
 
     for i, list_len in enumerate(words_lists_lengths):
-        sequence = list_of_words_lists[i]
+        sequence = list_of_idx_words_lists[i]
         batch_array[i, :list_len] = sequence[:list_len]
 
     return batch_array.astype(np.int)
 
-# def preprocess_data(dataset_type):
-#
-#     if dataset_type == 'train':
-#
-#     else:
+
+def preprocessing_pipe(data_path, data_set, data_filename):
+    particular_data_path = os.path.join(data_path, data_set, data_filename)
+    import csv
+    tqdm.tqdm.pandas()
+    with open(particular_data_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter="\t", quotechar=None)
+        lines = []
+        for line in reader:
+            lines.append(line)
+
+    columns = lines.pop(0)
+    df = pd.DataFrame(data=lines, columns=columns)
+    data = df[['gold_label', 'sentence1', 'sentence2']].copy()
+    if data_set == 'test':
+        print(data.loc[data['gold_label'] == '-'].iloc[:10])
+        data = filter_df_rows(data, 'gold_label', '-')
+
+    print(F'{data_set} data processing:')
+    print(F'\nProcessing premises')
+    data['sentence1'] = data['sentence1'].progress_map(lambda x: add_beginning_and_ending_word_to_sentence(
+        tokenize(to_lower_case(x))))
+    print(F'\nProcessing hypothesises')
+    data['sentence2'] = data['sentence2'].progress_map(lambda x: add_beginning_and_ending_word_to_sentence(
+        tokenize(to_lower_case(x))))
+    saving_path = os.path.join(data_path, data_set, data_set + '_processed_data.pickle')
+    print(F'\nSaving processed data to: {saving_path}')
+    data.to_pickle(os.path.join(data_path, data_set, data_set + '_processed_data.pickle'))
+    print('Data saved.')
 
 
+def main():
+    parser = argparse.ArgumentParser()
 
-# if __name__ == '__main__':
+    parser.add_argument("--data_path",
+                        default=None,
+                        type=str,
+                        required=False,
+                        help="The input data dir path.")
+
+    parser.add_argument("--dataset_part",
+                        default=None,
+                        type=str,
+                        required=True,
+                        help="The input datas_set part. Posibilities: trian, dev, test")
+    parser.add_argument("--dataset_part_filename",
+                        default=None,
+                        type=str,
+                        required=True,
+                        help="The input dataset part filename.")
+    args = parser.parse_args()
+    preprocessing_pipe(args.data_path, args.dataset_part, args.dataset_part_filename)
+
+
+if __name__ == '__main__':
+    main()
+    # dev_data_filename = 'multinli_1.0_dev_matched.txt'
+    # test_data_filename = 'multinli_1.0_dev_mismatched.txt'
+    # train_data_filename = 'multinli_1.0_train.txt'
+

@@ -357,10 +357,17 @@ class TestPreProcessing(unittest.TestCase):
             "<bos>": 5,
             "<eos>": 6,
         }
+        embeddings_matrix = np.array([[1, 2],
+                                     [2, 3],
+                                     [2, 3],
+                                     [2, 4],
+                                     [2, 3],
+                                     [2, 2],
+                                     [3, 3]])
 
         target_batch = [[5, 1, 2, 3, 6], [5, 4, 4, 6], [5, 1, 2, 3, 1, 6]]
         result_batch = preprocessing.create_word_to_idx_representation(
-            list_of_words_lists, vocab_dict
+            list_of_words_lists, vocab_dict, embeddings_matrix
         )
 
         np.testing.assert_array_equal(result_batch, target_batch)
