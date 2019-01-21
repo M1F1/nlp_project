@@ -21,9 +21,12 @@ class LSTMClassifier(nn.Module):
         super(LSTMClassifier, self).__init__()
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
+        self.hidden_size = 200
+        self.label_size = label_size
         self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim)
-        self.hidden2label = nn.Linear(hidden_dim, label_size)
+        self.hidden2linear = nn.Linear(hidden_dim, self.hidden_size)
+        self.linear2labels = nn.Linear(self.hidden_size, label_size)
         self.hidden = self.init_hidden()
 
     def init_hidden(self):
@@ -32,21 +35,27 @@ class LSTMClassifier(nn.Module):
         return (autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),
                 autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))
 
-    def forward(self, sent1_batch, sent2_batch):
-        embeds = self.word_embeddings(sent1_batch)
-        x1 = embeds.view(len(sent1_batch), self.batch_size, -1)
-        lstm_out1, self.hidden = self.lstm(x1, self.hidden)
+    def forward(self, sent1_batch, sent2_batch, sent1_batch_lengths, sent2_batch_lengths):
+        embeds1 = self.word_embeddings(sent1_batch)
+        pps1 = torch.nn.utils.rnn.pack_padded_sequence(embeds1, sent1_batch_lengths, batch_first=True)
+        lstm_out1, self.hidden = self.lstm(pps1, self.hidden)
+        lstm_out1_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out1, batch_first=True)
 
-        embeds = self.word_embeddings(sent2_batch)
-        x2 = embeds.view(len(sent2_batch), self.batch_size , -1)
-        lstm_out2, self.hidden = self.lstm(x2, self.hidden)
+        embeds2 = self.word_embeddings(sent2_batch)
+        pps2 = torch.nn.utils.rnn.pack_padded_sequence(embeds2, sent2_batch_lengths, batch_first=True)
+        lstm_out2, self.hidden = self.lstm(pps2, self.hidden)
+        lstm_out2_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out2, batch_first=True)
+        # think about cat dim
+        # shape manipulation on tensor to put to linear
+        lstm_out1_pps.contigous()
+        lstm_out1_to_linear = lstm_out1_pps.view(-1, lstm_out1_pps[2])
+        lstm_out2_to_linear = lstm_out2_pps.view(-1, lstm_out2_pps[2])
+        concatenation_lstm_out = torch.cat((lstm_out1_to_linear, lstm_out2_to_linear), 0)
 
-        concatenation_lstm_out = torch.cat((lstm_out1, lstm_out2), 0)
-
-        hidden2label_out = self.hidden2label(concatenation_lstm_out)
-        hidden2label_out_relu = F.relu(hidden2label_out)
-        y = self.second_linear_2label(hidden2label_out_relu)
-        log_probs = F.log_softmax(y)
+        hidden2linear_out = self.hidden2linear(concatenation_lstm_out)
+        hidden2linear_out_relu = F.relu(hidden2linear_out)
+        logits = self.linear2labels(hidden2linear_out_relu)
+        log_probs = F.log_softmax(logits)
         return log_probs
 
 
@@ -150,6 +159,7 @@ def train_epoch(model, train_iter, loss_function, optimizer, epoch):
         truth_res += list(label.data)
         model.batch_size = len(label.data)
         model.hidden = model.init_hidden()# detaching it from its history on the last instance.
+        # TODO: get how many elements per row are not 0 and put hat shpaes
         pred = model(torch.from_numpy(sent1), torch.from_numpy(sent2))
         pred_label = pred.data.max(1)[1].numpy()
         pred_res += [x[0] for x in pred_label]
