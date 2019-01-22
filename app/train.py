@@ -27,26 +27,27 @@ class LSTMClassifier(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, hidden_dim)
         self.hidden2linear = nn.Linear(hidden_dim * 2, self.hidden_size)
         self.linear2labels = nn.Linear(self.hidden_size, label_size)
-        self.hidden = self.init_hidden(0)
+        self.hidden = self.init_hidden()
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self):
         # the first is the hidden h
         # the second is the cell  c
-        return (autograd.Variable(torch.zeros(1, batch_size, self.hidden_dim)),
-                autograd.Variable(torch.zeros(1, batch_size, self.hidden_dim)))
+        return (autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),
+                autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))
 
     def forward(self, sent1_batch, sent2_batch, sent1_batch_lengths, sent2_batch_lengths):
         embeds1 = self.word_embeddings(sent1_batch)
-        pps1 = torch.nn.utils.rnn.pack_padded_sequence(embeds1, sent1_batch_lengths, batch_first=False)
+        sent1_batch_lengths[::-1].sort()
+        pps1 = torch.nn.utils.rnn.pack_padded_sequence(embeds1, sent1_batch_lengths, batch_first=True)
         lstm_out1, self.hidden = self.lstm(pps1.float(), self.hidden)
-        lstm_out1_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out1, batch_first=False)
+        lstm_out1_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out1, batch_first=True)
         last_out1 = lstm_out1_pps[:, -1]
 
         embeds2 = self.word_embeddings(sent2_batch)
         sent2_batch_lengths[::-1].sort()
-        pps2 = torch.nn.utils.rnn.pack_padded_sequence(embeds2, sent2_batch_lengths, batch_first=False)
+        pps2 = torch.nn.utils.rnn.pack_padded_sequence(embeds2, sent2_batch_lengths, batch_first=True)
         lstm_out2, self.hidden = self.lstm(pps2.float(), self.hidden)
-        lstm_out2_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out2, batch_first=False)
+        lstm_out2_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out2, batch_first=True)
         last_out2 = lstm_out2_pps[:, -1]
         # think about cat dim
         # shape manipulation on tensor to put to linear
