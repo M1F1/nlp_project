@@ -25,37 +25,44 @@ class LSTMClassifier(nn.Module):
         self.label_size = label_size
         self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim)
-        self.hidden2linear = nn.Linear(hidden_dim, self.hidden_size)
+        self.hidden2linear = nn.Linear(hidden_dim * 2, self.hidden_size)
         self.linear2labels = nn.Linear(self.hidden_size, label_size)
-        self.hidden = self.init_hidden()
+        self.hidden = self.init_hidden(0)
 
-    def init_hidden(self):
+    def init_hidden(self, batch_size):
         # the first is the hidden h
         # the second is the cell  c
-        return (autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),
-                autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))
+        return (autograd.Variable(torch.zeros(1, batch_size, self.hidden_dim)),
+                autograd.Variable(torch.zeros(1, batch_size, self.hidden_dim)))
 
     def forward(self, sent1_batch, sent2_batch, sent1_batch_lengths, sent2_batch_lengths):
         embeds1 = self.word_embeddings(sent1_batch)
-        pps1 = torch.nn.utils.rnn.pack_padded_sequence(embeds1, sent1_batch_lengths, batch_first=True)
-        lstm_out1, self.hidden = self.lstm(pps1, self.hidden)
-        lstm_out1_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out1, batch_first=True)
+        pps1 = torch.nn.utils.rnn.pack_padded_sequence(embeds1, sent1_batch_lengths, batch_first=False)
+        lstm_out1, self.hidden = self.lstm(pps1.float(), self.hidden)
+        lstm_out1_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out1, batch_first=False)
+        last_out1 = lstm_out1_pps[:, -1]
 
         embeds2 = self.word_embeddings(sent2_batch)
-        pps2 = torch.nn.utils.rnn.pack_padded_sequence(embeds2, sent2_batch_lengths, batch_first=True)
-        lstm_out2, self.hidden = self.lstm(pps2, self.hidden)
-        lstm_out2_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out2, batch_first=True)
+        sent2_batch_lengths[::-1].sort()
+        pps2 = torch.nn.utils.rnn.pack_padded_sequence(embeds2, sent2_batch_lengths, batch_first=False)
+        lstm_out2, self.hidden = self.lstm(pps2.float(), self.hidden)
+        lstm_out2_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out2, batch_first=False)
+        last_out2 = lstm_out2_pps[:, -1]
         # think about cat dim
         # shape manipulation on tensor to put to linear
-        lstm_out1_pps.contigous()
-        lstm_out1_to_linear = lstm_out1_pps.view(-1, lstm_out1_pps[2])
-        lstm_out2_to_linear = lstm_out2_pps.view(-1, lstm_out2_pps[2])
-        concatenation_lstm_out = torch.cat((lstm_out1_to_linear, lstm_out2_to_linear), 0)
+        last_out1 = last_out1.contiguous()
+        last_out2 = last_out2.contiguous()
+        # lstm_out1_to_linear = lstm_out1_pps.view(-1, lstm_out1_pps.shape[2])
+        # lstm_out2_to_linear = lstm_out2_pps.view(-1, lstm_out2_pps.shape[2])
+        # concatenation_lstm_out = torch.cat((lstm_out1_to_linear, lstm_out2_to_linear), 0)
+        concatenation_lstm_out = torch.cat((last_out1, last_out2), 1)
 
         hidden2linear_out = self.hidden2linear(concatenation_lstm_out)
         hidden2linear_out_relu = F.relu(hidden2linear_out)
         logits = self.linear2labels(hidden2linear_out_relu)
-        log_probs = F.log_softmax(logits)
+        log_probs = F.log_softmax(logits, dim=1)
+        # log_probs = log_probs.view(self.batch_size, self.label_size)
+
         return log_probs
 
 
@@ -70,7 +77,7 @@ def get_accuracy(truth, pred):
 
 def train():
     EMBEDDING_DIM = 200
-    HIDDEN_DIM = 50
+    HIDDEN_DIM = 200
     EPOCH = 3
     BATCH_SIZE = 32
     root_dir = os.path.dirname(os.path.dirname(__file__))
@@ -97,7 +104,7 @@ def train():
                            label_size=len(data_loader.labels_dict),
                            batch_size=BATCH_SIZE)
     model.word_embeddings.weight.data = torch.from_numpy(data_loader.embeddings)
-    loss_function = nn.NLLLoss()
+    loss_function = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     no_up = 0
@@ -125,19 +132,21 @@ def evaluate(model, eval_iter, loss_function,  name ='dev'):
     truth_res = []
     pred_res = []
     # tgqm
-    print(F'\n{name} phase:\n')
+    print(F'{name} phase:\n')
     for i in tqdm(range(len(eval_iter))):
         sent1, sent2, label = eval_iter[i].premises, eval_iter[i].hypothesises, eval_iter[i].hypothesises
-        label = torch.IntTensor(label)
+        label = torch.LongTensor(label)
         # label.data.sub_(1)
         truth_res += list(label.data)
         model.batch_size = len(label.data)
         model.hidden = model.init_hidden()  # detaching it from its history on the last instance.
-        pred = model(sent1, sent2)
+        sent1_lengths = (sent1 != 0).sum(1)
+        sent2_lengths = (sent2 != 0).sum(1)
+        pred = model(sent1, sent2, sent1_lengths, sent2_lengths)
         pred_label = pred.data.max(1)[1].numpy()
-        pred_res += [x[0] for x in pred_label]
+        pred_res += [x for x in pred_label]
         loss = loss_function(pred, label)
-        avg_loss += loss.data[0]
+        avg_loss += loss.item()
 
     avg_loss /= len(eval_iter)
     acc = get_accuracy(truth_res, pred_res)
@@ -154,25 +163,27 @@ def train_epoch(model, train_iter, loss_function, optimizer, epoch):
     print('\ntrain phase:\n')
     for i in tqdm(range(len(train_iter))):
         sent1, sent2, label = train_iter[i].premises, train_iter[i].hypothesises, train_iter[i].labels
-        label = torch.IntTensor(label)
+        sent1_lengths = (sent1 != 0).sum(1)
+        sent2_lengths = (sent2 != 0).sum(1)
+        label = torch.LongTensor(label)
         # label.data.sub_(1)
         truth_res += list(label.data)
         model.batch_size = len(label.data)
         model.hidden = model.init_hidden()# detaching it from its history on the last instance.
         # TODO: get how many elements per row are not 0 and put hat shpaes
-        pred = model(torch.from_numpy(sent1), torch.from_numpy(sent2))
+        pred = model(torch.from_numpy(sent1), torch.from_numpy(sent2), sent1_lengths, sent2_lengths)
         pred_label = pred.data.max(1)[1].numpy()
-        pred_res += [x[0] for x in pred_label]
+        pred_res += [x for x in pred_label]
         model.zero_grad()
         loss = loss_function(pred, label)
-        avg_loss += loss.data[0]
+        avg_loss += loss.item()
         count += 1
         if count % 100 == 0:
-            print('epoch: %d iterations: %d loss :%g' % (epoch, count*model.batch_size, loss.data[0]))
+            print('epoch: %d iterations: %d loss :%g' % (epoch, count*model.batch_size, loss.item()))
         loss.backward()
         optimizer.step()
     avg_loss /= len(train_iter)
-    print('epoch: %d done!\ntrain avg_loss:%g , acc:%g'%(epoch, avg_loss, get_accuracy(truth_res,pred_res)))
+    print('epoch: %d done!\ntrain avg_loss:%g , acc:%g'%(epoch, avg_loss, get_accuracy(truth_res, pred_res)))
 
 
 if __name__ == '__main__':
