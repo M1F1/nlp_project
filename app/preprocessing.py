@@ -237,7 +237,7 @@ def preprocessing_pipe(data_path, data_set, data_filename):
     df = pd.DataFrame(data=lines, columns=columns)
     data = df[['gold_label', 'sentence1', 'sentence2']].copy()
     # if data_set != 'train':
-    #     print(data.loc[data['gold_label'] == '-'].iloc[:10])
+    print(data.loc[data['gold_label'] == '-'].iloc[:10])
     data = filter_df_rows(data, 'gold_label', '-')
 
     print(F'{data_set} data processing:')

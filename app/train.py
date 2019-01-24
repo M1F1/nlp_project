@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
@@ -8,11 +7,12 @@ from app import DataLoader
 import os
 from tqdm import tqdm
 import random
+import numpy as np
 torch.set_num_threads(8)
 torch.manual_seed(1)
 random.seed(1)
-# torch.cuda.set_device(args.gpu)
-import torch.utils.data as Data
+import time
+import matplotlib.pyplot as plt
 
 
 class LSTMClassifier(nn.Module):
@@ -82,13 +82,16 @@ def train():
     HIDDEN_DIM = 200
     EPOCH = 3
     BATCH_SIZE = 32
+
     root_dir = os.path.dirname(os.path.dirname(__file__))
     data_path = os.path.join(root_dir, 'data')
+    results_path = os.path.join(root_dir, 'results')
     train_path = os.path.join(data_path, 'train', 'train_processed_data.pickle')
     dev_path = os.path.join(data_path, 'dev', 'dev_processed_data.pickle')
     test_path = os.path.join(data_path, 'test', 'test_processed_data.pickle')
     embeddings_path = os.path.join(data_path, 'vocab', 'final_embeddings_matrix.npy')
     vocab_path = os.path.join(data_path, 'vocab', 'vocab_dict.pkl')
+
     data_loader = DataLoader.DataLoader(train_path=train_path,
                                         test_path=test_path,
                                         dev_path=dev_path,
@@ -96,7 +99,6 @@ def train():
                                         embeddings_path=embeddings_path,
                                         batch_size=BATCH_SIZE)
     train_iter, dev_iter, test_iter = data_loader.get_batches()
-    print(data_loader.embeddings.shape)
 
     best_dev_acc = 0.0
 
@@ -105,88 +107,188 @@ def train():
                            vocab_size=len(data_loader.vocab_dict),
                            label_size=len(data_loader.labels_dict),
                            batch_size=BATCH_SIZE)
+
     model.word_embeddings.weight.data = torch.from_numpy(data_loader.embeddings)
     loss_function = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
-
-    no_up = 0
+    print('\nStart training.\n')
     for i in range(EPOCH):
-        print(F'Epoch {i}:')
-        train_epoch(model, train_iter, loss_function, optimizer, i)
-        print('now best dev acc:', best_dev_acc)
-        dev_acc = evaluate(model, dev_iter, loss_function, 'dev')
-        test_acc = evaluate(model, test_iter, loss_function, 'test')
+        print(F'\nEpoch {i}:')
+        time.sleep(1)
+        # train_epoch(model, train_iter, loss_function, optimizer, i)
+        print('best acc at dev set:', best_dev_acc)
+        dev_acc = evaluate(model, dev_iter, loss_function, i, 'dev')
+        test_acc = evaluate(model, test_iter, loss_function, i, 'test')
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
-            os.system('rm best_models/mr_best_model_minibatch_acc_*.model')
-            print('New Best Dev!!!')
-            torch.save(model.state_dict(), 'best_models/mr_best_model_minibatch_acc_' + str(int(test_acc*10000)) + '.model')
-            no_up = 0
-        else:
-            no_up += 1
-            if no_up >= 10:
-                exit()
+            model_path = os.path.join(results_path,
+                                      F"epoch_*_best_model_acc_*.model")
+            os.system(F'rm {model_path}')
+
+            torch.save(model.state_dict(),
+                       os.path.join(results_path,
+                                    F'epoch_{i}_best_model_acc_' +
+                                    str(int(test_acc*10000)) + '.model')
+                       )
+
+            print('Saving best model.')
 
 
-def evaluate(model, eval_iter, loss_function,  name ='dev'):
+def final_evaluation():
+    EMBEDDING_DIM = 200
+    HIDDEN_DIM = 200
+    EPOCH = 3
+    BATCH_SIZE = 32
+
+    root_dir = os.path.dirname(os.path.dirname(__file__))
+    data_path = os.path.join(root_dir, 'data')
+    results_path = os.path.join(root_dir, 'results')
+    train_path = os.path.join(data_path, 'train', 'train_processed_data.pickle')
+    dev_path = os.path.join(data_path, 'dev', 'dev_processed_data.pickle')
+    test_path = os.path.join(data_path, 'test', 'test_processed_data.pickle')
+    embeddings_path = os.path.join(data_path, 'vocab', 'final_embeddings_matrix.npy')
+    vocab_path = os.path.join(data_path, 'vocab', 'vocab_dict.pkl')
+
+    data_loader = DataLoader.DataLoader(train_path=train_path,
+                                        test_path=test_path,
+                                        dev_path=dev_path,
+                                        vocab_path=vocab_path,
+                                        embeddings_path=embeddings_path,
+                                        batch_size=BATCH_SIZE)
+    train_iter, dev_iter, test_iter = data_loader.get_batches()
+
+    best_model = LSTMClassifier(embedding_dim=EMBEDDING_DIM,
+                                hidden_dim=HIDDEN_DIM,
+                                vocab_size=len(data_loader.vocab_dict),
+                                label_size=len(data_loader.labels_dict),
+                                batch_size=BATCH_SIZE)
+    best_model.word_embeddings.weight.data = torch.from_numpy(data_loader.embeddings)
+    import glob
+    filename = glob.glob(os.path.join(results_path, F"epoch_*_best_model_acc_*.model"))
+    print(filename)
+    best_model.load_state_dict(torch.load(filename[0]))
+    loss_function = nn.CrossEntropyLoss()
+    evaluate(best_model, test_iter, loss_function, 0, 'final_evaluation')
+
+
+def evaluate(model, eval_iter, loss_function, epoch, name='dev'):
+    print(F'\n{name} phase:\n')
+    time.sleep(1)
     model.eval()
     avg_loss = 0.0
     truth_res = []
     pred_res = []
-    # tgqm
-    print(F'{name} phase:\n')
+    loss_list = []
+    acc_list = []
+    # import visdom
+    # vis = visdom.Visdom()
+    # loss_window = vis.line(X=np.zeros((1,)),
+    #                        Y=np.zeros((1,)),
+    #                        opts=dict(xlabel='iteration',
+    #                                  ylabel='Loss',
+    #                                  title='Iteration loss',
+    #                                  ))
+    #
+    # acc_window = vis.line(X=np.zeros((1,)),
+    #                        Y=np.zeros((1,)),
+    #                        opts=dict(xlabel='iteration',
+    #                                  ylabel='Accuracy',
+    #                                  title='Iteration accuracy',
+    #                                  ))
     for i in tqdm(range(len(eval_iter))):
-        sent1, sent2, label = eval_iter[i].premises, eval_iter[i].hypothesises, eval_iter[i].hypothesises
+        sent1, sent2, label = eval_iter[i].premises, eval_iter[i].hypothesises, eval_iter[i].labels
         label = torch.LongTensor(label)
-        # label.data.sub_(1)
         truth_res += list(label.data)
         model.batch_size = len(label.data)
         model.hidden = model.init_hidden()  # detaching it from its history on the last instance.
         sent1_lengths = (sent1 != 0).sum(1)
         sent2_lengths = (sent2 != 0).sum(1)
-        pred = model(sent1, sent2, sent1_lengths, sent2_lengths)
+        pred = model(torch.from_numpy(sent1), torch.from_numpy(sent2), sent1_lengths, sent2_lengths)
         pred_label = pred.data.max(1)[1].numpy()
         pred_res += [x for x in pred_label]
         loss = loss_function(pred, label)
         avg_loss += loss.item()
+        loss_list.append(loss)
+        acc_list.append(get_accuracy(truth_res, pred_res))
+        # np.random.seed(i)
+        # X1 = np.ones((1, 1)) * i
+        #
+        # np.random.seed(i + 1)
+        # Y1 = np.array([avg_loss / (i + 1)]) * np.random.randint(1, 100) - 10
+        # Y2 = np.array([acc]) - 10
+        # vis.line(
+        #     X=np.column_stack(X1),
+        #     Y=np.column_stack(Y1),
+        #     win=loss_window,
+        #     update='append')
+        #
+        # vis.line(
+        #     X=np.column_stack(X1),
+        #     Y=np.column_stack(Y2),
+        #     win=acc_window,
+        #     update='append')
+
+
 
     avg_loss /= len(eval_iter)
     acc = get_accuracy(truth_res, pred_res)
-    print(name + ' avg_loss:%g train acc:%g' % (avg_loss, acc))
+    print(name + F' avg_loss: {avg_loss} train acc: {acc}')
+    create_line_plot('accuracy', epoch, eval_iter, acc_list)
+    create_line_plot('loss', epoch, eval_iter, loss_list)
     return acc
 
 
+
+
 def train_epoch(model, train_iter, loss_function, optimizer, epoch):
+    print('\ntrain phase:\n')
+    time.sleep(1)
     model.train()
     avg_loss = 0.0
     count = 0
     truth_res = []
     pred_res = []
-    print('\ntrain phase:\n')
+    loss_list = []
+    acc_list = []
     for i in tqdm(range(len(train_iter))):
         sent1, sent2, label = train_iter[i].premises, train_iter[i].hypothesises, train_iter[i].labels
         sent1_lengths = (sent1 != 0).sum(1)
         sent2_lengths = (sent2 != 0).sum(1)
         label = torch.LongTensor(label)
-        # label.data.sub_(1)
         truth_res += list(label.data)
         model.batch_size = len(label.data)
         model.hidden = model.init_hidden()# detaching it from its history on the last instance.
-        # TODO: get how many elements per row are not 0 and put hat shpaes
         pred = model(torch.from_numpy(sent1), torch.from_numpy(sent2), sent1_lengths, sent2_lengths)
         pred_label = pred.data.max(1)[1].numpy()
         pred_res += [x for x in pred_label]
         model.zero_grad()
         loss = loss_function(pred, label)
         avg_loss += loss.item()
+        loss_list.append(loss)
+        acc_list.append(get_accuracy(truth_res, pred_res))
         count += 1
         if count % 100 == 0:
-            print('epoch: %d iterations: %d loss :%g' % (epoch, count*model.batch_size, loss.item()))
+            print(F'epoch: {epoch} iterations: {count * model.batch_size} loss :{loss.item()}')
         loss.backward()
         optimizer.step()
     avg_loss /= len(train_iter)
-    print('epoch: %d done!\ntrain avg_loss:%g , acc:%g'%(epoch, avg_loss, get_accuracy(truth_res, pred_res)))
+    print(F'epoch: {epoch} finished.')
+    print(F'train avg_loss: {avg_loss}, acc: {get_accuracy(truth_res, pred_res)}')
+    create_line_plot('accuracy', epoch, train_iter, acc_list)
+    create_line_plot('loss', epoch, train_iter, loss_list)
+
+
+def create_line_plot(name, epoch, iter, Y):
+    X = np.arange(len(iter))
+    fig, ax = plt.subplots()
+    ax.plot(X, np.array(Y))
+    ax.set(xlabel='iter', ylabel=name)
+    ax.grid()
+    fig.savefig(F"{epoch}_{name}.png")
+    plt.show()
 
 
 if __name__ == '__main__':
+    # final_evaluation()
     train()
+
