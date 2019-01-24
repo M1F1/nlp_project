@@ -115,10 +115,10 @@ def train():
     for i in range(EPOCH):
         print(F'\nEpoch {i}:')
         time.sleep(1)
-        # train_epoch(model, train_iter, loss_function, optimizer, i)
+        train_epoch(model, train_iter, loss_function, optimizer, i, results_path)
         print('best acc at dev set:', best_dev_acc)
-        dev_acc = evaluate(model, dev_iter, loss_function, i, 'dev')
-        test_acc = evaluate(model, test_iter, loss_function, i, 'test')
+        dev_acc = evaluate(model, dev_iter, loss_function, i, 'dev', results_path)
+        test_acc = evaluate(model, test_iter, loss_function, i, 'test', results_path)
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
             model_path = os.path.join(results_path,
@@ -168,10 +168,10 @@ def final_evaluation():
     print(filename)
     best_model.load_state_dict(torch.load(filename[0]))
     loss_function = nn.CrossEntropyLoss()
-    evaluate(best_model, test_iter, loss_function, 0, 'final_evaluation')
+    evaluate(best_model, test_iter, loss_function, 0, 'final_evaluation', results_path)
 
 
-def evaluate(model, eval_iter, loss_function, epoch, name='dev'):
+def evaluate(model, eval_iter, loss_function, epoch, name, results_path):
     print(F'\n{name} phase:\n')
     time.sleep(1)
     model.eval()
@@ -233,14 +233,12 @@ def evaluate(model, eval_iter, loss_function, epoch, name='dev'):
     avg_loss /= len(eval_iter)
     acc = get_accuracy(truth_res, pred_res)
     print(name + F' avg_loss: {avg_loss} train acc: {acc}')
-    create_line_plot('accuracy', epoch, eval_iter, acc_list)
-    create_line_plot('loss', epoch, eval_iter, loss_list)
+    create_line_plot(name, 'accuracy', epoch, eval_iter, acc_list, results_path)
+    create_line_plot(name, 'loss', epoch, eval_iter, loss_list, results_path)
     return acc
 
 
-
-
-def train_epoch(model, train_iter, loss_function, optimizer, epoch):
+def train_epoch(model, train_iter, loss_function, optimizer, epoch, results_path):
     print('\ntrain phase:\n')
     time.sleep(1)
     model.train()
@@ -274,21 +272,21 @@ def train_epoch(model, train_iter, loss_function, optimizer, epoch):
     avg_loss /= len(train_iter)
     print(F'epoch: {epoch} finished.')
     print(F'train avg_loss: {avg_loss}, acc: {get_accuracy(truth_res, pred_res)}')
-    create_line_plot('accuracy', epoch, train_iter, acc_list)
-    create_line_plot('loss', epoch, train_iter, loss_list)
+    create_line_plot('train', 'accuracy', epoch, train_iter, acc_list, results_path)
+    create_line_plot('train', 'loss', epoch, train_iter, loss_list, results_path)
 
 
-def create_line_plot(name, epoch, iter, Y):
+def create_line_plot(phase_name, Y_name, epoch, iter, Y, results_path):
     X = np.arange(len(iter))
     fig, ax = plt.subplots()
     ax.plot(X, np.array(Y))
-    ax.set(xlabel='iter', ylabel=name)
+    ax.set(xlabel='iter', ylabel=Y_name)
     ax.grid()
-    fig.savefig(F"{epoch}_{name}.png")
+    fig.savefig(os.path.join(results_path, F"{phase_name}_{epoch}_{Y_name}.png"))
     plt.show()
 
 
 if __name__ == '__main__':
-    # final_evaluation()
     train()
+    final_evaluation()
 
