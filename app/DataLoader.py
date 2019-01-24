@@ -4,6 +4,8 @@ import os
 from app import preprocessing as prep
 import pickle
 from tqdm import tqdm
+import time
+import sys
 
 
 def load_obj(obj_path):
@@ -43,23 +45,29 @@ class DataLoader:
         self.vocab_dict['<unk>'] = self.embeddings.shape[0] - 1
 
     def _prepare_batches(self, data, data_name):
+        print(F'\nPreparing {data_name} batches:\n', end='')
         rows_idx = np.arange(data.shape[0])
         batches_nbr = prep.define_batches_amount(rows_idx, self.batch_size)
         batches = []
-        print(F'Preparing {data_name} batches:')
+        time.sleep(1)
         for i in tqdm(range(batches_nbr)):
             selected_idx = prep.generate_batch_idx_from_data_idx(rows_idx, self.batch_size, i)
+            # print(selected_idx)
             labels, premises, hypothesises = prep.get_labels_and_batch_lists_representation(data, selected_idx)
+            # print(premises)
             premises = prep.create_word_to_idx_representation(premises, self.vocab_dict)
             hypothesises = prep.create_word_to_idx_representation(hypothesises, self.vocab_dict)
+            # print(premises)
+            # print(i)
             premises = prep.create_batch_matrix_representation(premises, self.vocab_dict)
             hypothesises = prep.create_batch_matrix_representation(hypothesises, self.vocab_dict)
             labels = prep.labels2idx(labels)
             batch = Batch(premises, hypothesises, labels)
             batches.append(batch)
-        print()
-        print('\nexample:')
-        print(batches[-1])
+
+        time.sleep(1)
+        # print('\nexample:')
+        # print(batches[-1])
         return batches
 
     def get_batches(self):
@@ -84,5 +92,5 @@ if __name__ == '__main__':
                              embeddings_path=embeddings_path,
                              batch_size=32)
     tb, db, testb = data_loader.get_batches()
-    print(data_loader.embeddings.shape)
-    print('end')
+    # print(data_loader.embeddings.shape)
+    # print('end')

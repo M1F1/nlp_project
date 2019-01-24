@@ -4,7 +4,7 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from app.DataLoader import DataLoader
+from app import DataLoader
 import os
 from tqdm import tqdm
 import random
@@ -36,6 +36,7 @@ class LSTMClassifier(nn.Module):
                 autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))
 
     def forward(self, sent1_batch, sent2_batch, sent1_batch_lengths, sent2_batch_lengths):
+        # check embeddings and pipe maybe sth is wrong with pack padded sequence
         embeds1 = self.word_embeddings(sent1_batch)
         sent1_batch_lengths[::-1].sort()
         pps1 = torch.nn.utils.rnn.pack_padded_sequence(embeds1, sent1_batch_lengths, batch_first=True)
@@ -88,12 +89,12 @@ def train():
     test_path = os.path.join(data_path, 'test', 'test_processed_data.pickle')
     embeddings_path = os.path.join(data_path, 'vocab', 'final_embeddings_matrix.npy')
     vocab_path = os.path.join(data_path, 'vocab', 'vocab_dict.pkl')
-    data_loader = DataLoader(train_path=train_path,
-                             test_path=test_path,
-                             dev_path=dev_path,
-                             vocab_path=vocab_path,
-                             embeddings_path=embeddings_path,
-                             batch_size=BATCH_SIZE)
+    data_loader = DataLoader.DataLoader(train_path=train_path,
+                                        test_path=test_path,
+                                        dev_path=dev_path,
+                                        vocab_path=vocab_path,
+                                        embeddings_path=embeddings_path,
+                                        batch_size=BATCH_SIZE)
     train_iter, dev_iter, test_iter = data_loader.get_batches()
     print(data_loader.embeddings.shape)
 
@@ -110,7 +111,7 @@ def train():
 
     no_up = 0
     for i in range(EPOCH):
-        print('epoch: %d start!' % i)
+        print(F'Epoch {i}:')
         train_epoch(model, train_iter, loss_function, optimizer, i)
         print('now best dev acc:', best_dev_acc)
         dev_acc = evaluate(model, dev_iter, loss_function, 'dev')

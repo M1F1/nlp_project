@@ -169,7 +169,7 @@ def load_obj(filename, dir_path):
 
 
 def define_batches_amount(rows_idx: np.ndarray, batch_size: int):
-    batches_amount = (rows_idx.shape[0] // batch_size) + 1
+    batches_amount = rows_idx.shape[0] // batch_size
     return batches_amount
 
 
@@ -206,6 +206,7 @@ def create_word_to_idx_representation(list_of_words_list, vocab_dict):
 
 def create_batch_matrix_representation(list_of_idx_words_lists, vocab_dict):
     words_lists_lengths = [len(l) for l in list_of_idx_words_lists]
+    # print(words_lists_lengths)
     max_length = max(words_lists_lengths)
     batch_array = np.ones((len(list_of_idx_words_lists), max_length)) * vocab_dict["<pad>"]
 
@@ -235,9 +236,9 @@ def preprocessing_pipe(data_path, data_set, data_filename):
     columns = lines.pop(0)
     df = pd.DataFrame(data=lines, columns=columns)
     data = df[['gold_label', 'sentence1', 'sentence2']].copy()
-    if data_set != 'train':
-        print(data.loc[data['gold_label'] == '-'].iloc[:10])
-        data = filter_df_rows(data, 'gold_label', '-')
+    # if data_set != 'train':
+    #     print(data.loc[data['gold_label'] == '-'].iloc[:10])
+    data = filter_df_rows(data, 'gold_label', '-')
 
     print(F'{data_set} data processing:')
     print(F'\nProcessing premises')
