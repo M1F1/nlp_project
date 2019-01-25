@@ -52,13 +52,9 @@ class DataLoader:
         time.sleep(1)
         for i in tqdm(range(batches_nbr)):
             selected_idx = prep.generate_batch_idx_from_data_idx(rows_idx, self.batch_size, i)
-            # print(selected_idx)
             labels, premises, hypothesises = prep.get_labels_and_batch_lists_representation(data, selected_idx)
-            # print(premises)
             premises = prep.create_word_to_idx_representation(premises, self.vocab_dict)
             hypothesises = prep.create_word_to_idx_representation(hypothesises, self.vocab_dict)
-            # print(premises)
-            # print(i)
             premises = prep.create_batch_matrix_representation(premises, self.vocab_dict)
             hypothesises = prep.create_batch_matrix_representation(hypothesises, self.vocab_dict)
             labels = prep.labels2idx(labels)
@@ -66,8 +62,6 @@ class DataLoader:
             batches.append(batch)
 
         time.sleep(1)
-        # print('\nexample:')
-        # print(batches[-1])
         return batches
 
     def get_batches(self):
@@ -92,5 +86,3 @@ if __name__ == '__main__':
                              embeddings_path=embeddings_path,
                              batch_size=32)
     tb, db, testb = data_loader.get_batches()
-    # print(data_loader.embeddings.shape)
-    # print('end')

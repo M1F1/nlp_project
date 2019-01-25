@@ -32,24 +32,29 @@ class LSTMClassifier(nn.Module):
     def init_hidden(self):
         # the first is the hidden h
         # the second is the cell  c
+        # lstm layers, batch_size, number of lstm units
         return (autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)),
                 autograd.Variable(torch.zeros(1, self.batch_size, self.hidden_dim)))
 
     def forward(self, sent1_batch, sent2_batch, sent1_batch_lengths, sent2_batch_lengths):
         # check embeddings and pipe maybe sth is wrong with pack padded sequence
-        embeds1 = self.word_embeddings(sent1_batch)
-        sent1_batch_lengths[::-1].sort()
-        pps1 = torch.nn.utils.rnn.pack_padded_sequence(embeds1, sent1_batch_lengths, batch_first=True)
-        lstm_out1, self.hidden = self.lstm(pps1.float(), self.hidden)
-        lstm_out1_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out1, batch_first=True)
-        last_out1 = lstm_out1_pps[:, -1]
+        self.hidden = self.init_hidden() # reset the lstm hidden state to not be a continueation of previous
+        embeds1 = self.word_embeddings(autograd.Variable(torch.LongTensor(sent1_batch.t())))
+        # batch_size, seq_len, embedding_dim = embeds1.size()
+        # sent1_batch_lengths[::-1].sort()
+        # pps1 = torch.nn.utils.rnn.pack_padded_sequence(embeds1, sent1_batch_lengths, batch_first=True)
+        lstm_out1, self.hidden = self.lstm(embeds1.float(), self.hidden)
+        # lstm_out1_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out1, batch_first=True)
+        last_out1 = lstm_out1[-1]
+        # last_out1 = lstm_out1[:, -1]
 
-        embeds2 = self.word_embeddings(sent2_batch)
-        sent2_batch_lengths[::-1].sort()
-        pps2 = torch.nn.utils.rnn.pack_padded_sequence(embeds2, sent2_batch_lengths, batch_first=True)
-        lstm_out2, self.hidden = self.lstm(pps2.float(), self.hidden)
-        lstm_out2_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out2, batch_first=True)
-        last_out2 = lstm_out2_pps[:, -1]
+        embeds2 = self.word_embeddings(autograd.Variable(torch.LongTensor(sent2_batch.t())))
+        # sent2_batch_lengths[::-1].sort()
+        # pps2 = torch.nn.utils.rnn.pack_padded_sequence(embeds2, sent2_batch_lengths, batch_first=True)
+        lstm_out2, self.hidden = self.lstm(embeds2.float(), self.hidden)
+        # lstm_out2_pps, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out2, batch_first=True)
+        # last_out2 = lstm_out2[:, -1]
+        last_out2 = lstm_out2[-1]
         # think about cat dim
         # shape manipulation on tensor to put to linear
         last_out1 = last_out1.contiguous()
@@ -174,10 +179,10 @@ def final_evaluation():
 def evaluate(model, eval_iter, loss_function, epoch, name, results_path):
     print(F'\n{name} phase:\n')
     time.sleep(1)
-    model.eval()
+
     avg_loss = 0.0
-    truth_res = []
-    pred_res = []
+    true_labels = []
+    pred_labels = []
     loss_list = []
     acc_list = []
     # import visdom
@@ -195,21 +200,23 @@ def evaluate(model, eval_iter, loss_function, epoch, name, results_path):
     #                                  ylabel='Accuracy',
     #                                  title='Iteration accuracy',
     #                                  ))
+    model.eval()
+
     for i in tqdm(range(len(eval_iter))):
         sent1, sent2, label = eval_iter[i].premises, eval_iter[i].hypothesises, eval_iter[i].labels
-        label = torch.LongTensor(label)
-        truth_res += list(label.data)
-        model.batch_size = len(label.data)
-        model.hidden = model.init_hidden()  # detaching it from its history on the last instance.
         sent1_lengths = (sent1 != 0).sum(1)
         sent2_lengths = (sent2 != 0).sum(1)
+
+        label = torch.LongTensor(label)
+        true_labels += list(label.data)
+        model.batch_size = len(label.data)
         pred = model(torch.from_numpy(sent1), torch.from_numpy(sent2), sent1_lengths, sent2_lengths)
         pred_label = pred.data.max(1)[1].numpy()
-        pred_res += [x for x in pred_label]
+        pred_labels += [x for x in pred_label]
         loss = loss_function(pred, label)
         avg_loss += loss.item()
         loss_list.append(loss)
-        acc_list.append(get_accuracy(truth_res, pred_res))
+        acc_list.append(get_accuracy(true_labels, pred_labels))
         # np.random.seed(i)
         # X1 = np.ones((1, 1)) * i
         #
@@ -231,7 +238,7 @@ def evaluate(model, eval_iter, loss_function, epoch, name, results_path):
 
 
     avg_loss /= len(eval_iter)
-    acc = get_accuracy(truth_res, pred_res)
+    acc = get_accuracy(true_labels, pred_labels)
     print(name + F' avg_loss: {avg_loss} train acc: {acc}')
     create_line_plot(name, 'accuracy', epoch, eval_iter, acc_list, results_path)
     create_line_plot(name, 'loss', epoch, eval_iter, loss_list, results_path)
@@ -241,37 +248,47 @@ def evaluate(model, eval_iter, loss_function, epoch, name, results_path):
 def train_epoch(model, train_iter, loss_function, optimizer, epoch, results_path):
     print('\ntrain phase:\n')
     time.sleep(1)
-    model.train()
+
     avg_loss = 0.0
     count = 0
-    truth_res = []
-    pred_res = []
+    true_labels = []
+    pred_labels = []
     loss_list = []
     acc_list = []
+
+    model.train()
+
     for i in tqdm(range(len(train_iter))):
+        model.zero_grad()
         sent1, sent2, label = train_iter[i].premises, train_iter[i].hypothesises, train_iter[i].labels
+        # sorted_idx_sent1 = (sent1 == 0).sum(axis=1).argsort()
+        # sent1 = sent1[sorted_idx_sent1]
+        # sent2 = sent2[sorted_idx_sent1]
+        # label = label[sorted_idx_sent1]
         sent1_lengths = (sent1 != 0).sum(1)
         sent2_lengths = (sent2 != 0).sum(1)
-        label = torch.LongTensor(label)
-        truth_res += list(label.data)
+        label = autograd.Variable(torch.LongTensor(label))
+
         model.batch_size = len(label.data)
-        model.hidden = model.init_hidden()# detaching it from its history on the last instance.
         pred = model(torch.from_numpy(sent1), torch.from_numpy(sent2), sent1_lengths, sent2_lengths)
+
+        true_labels += list(label.data)
         pred_label = pred.data.max(1)[1].numpy()
-        pred_res += [x for x in pred_label]
-        model.zero_grad()
+        pred_labels += [x for x in pred_label]
+
         loss = loss_function(pred, label)
         avg_loss += loss.item()
         loss_list.append(loss)
-        acc_list.append(get_accuracy(truth_res, pred_res))
+        acc_list.append(get_accuracy(true_labels, pred_labels))
         count += 1
-        if count % 100 == 0:
+        if count % 20 == 0:
             print(F'epoch: {epoch} iterations: {count * model.batch_size} loss :{loss.item()}')
         loss.backward()
         optimizer.step()
+
     avg_loss /= len(train_iter)
     print(F'epoch: {epoch} finished.')
-    print(F'train avg_loss: {avg_loss}, acc: {get_accuracy(truth_res, pred_res)}')
+    print(F'train avg_loss: {avg_loss}, acc: {get_accuracy(true_labels, pred_labels)}')
     create_line_plot('train', 'accuracy', epoch, train_iter, acc_list, results_path)
     create_line_plot('train', 'loss', epoch, train_iter, loss_list, results_path)
 

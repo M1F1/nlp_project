@@ -222,6 +222,7 @@ def labels2idx(labels):
     labels_idx = [labels_dict[label] for label in labels]
     return np.array(labels_idx)
 
+
 def preprocessing_pipe(data_path, data_set, data_filename):
     import tqdm
     particular_data_path = os.path.join(data_path, data_set, data_filename)
@@ -236,7 +237,6 @@ def preprocessing_pipe(data_path, data_set, data_filename):
     columns = lines.pop(0)
     df = pd.DataFrame(data=lines, columns=columns)
     data = df[['gold_label', 'sentence1', 'sentence2']].copy()
-    # if data_set != 'train':
     print(data.loc[data['gold_label'] == '-'].iloc[:10])
     data = filter_df_rows(data, 'gold_label', '-')
 
@@ -267,18 +267,17 @@ def main():
                         type=str,
                         required=True,
                         help="The input datas_set part. Posibilities: trian, dev, test")
+
     parser.add_argument("--dataset_part_filename",
                         default=None,
                         type=str,
                         required=True,
                         help="The input dataset part filename.")
+
     args = parser.parse_args()
     preprocessing_pipe(args.data_path, args.dataset_part, args.dataset_part_filename)
 
 
 if __name__ == '__main__':
     main()
-    # dev_data_filename = 'multinli_1.0_dev_matched.txt'
-    # test_data_filename = 'multinli_1.0_dev_mismatched.txt'
-    # train_data_filename = 'multinli_1.0_train.txt'
 
